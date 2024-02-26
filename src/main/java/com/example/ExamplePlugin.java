@@ -17,70 +17,98 @@ import net.runelite.client.plugins.Plugin;
 import net.runelite.client.plugins.PluginDescriptor;
 
 @Slf4j
-@PluginDescriptor(
-        name = "Example"
-)
-public class ExamplePlugin extends Plugin {
-    @Inject
-    private ClientThread clientThread;
+@PluginDescriptor(name = "Example")
+public class ExamplePlugin extends Plugin
+{
+	static final int DEFAULT_NOTIFICATION_TEXT_COLOR = -1;
+	@Inject
+	private ClientThread clientThread;
 
-    @Inject
-    private Client client;
+	@Inject
+	private Client client;
 
-    @Inject
-    private ExampleConfig config;
+	@Inject
+	private ExampleConfig config;
 
-    @Override
-    protected void startUp() throws Exception {
-        log.info("Example started!");
-    }
+	@Override
+	protected void startUp() throws Exception
+	{
+		log.info("Example started!");
+	}
 
-    @Subscribe
-    public void onGameStateChanged(GameStateChanged gameStateChanged) {
-        if (gameStateChanged.getGameState() == GameState.LOGGED_IN) {
-            // test setting hint arrow above currently logged in player
-            Player currentPlayer = client.getLocalPlayer();
-            client.setHintArrow(currentPlayer);
-
-
-            client.addChatMessage(ChatMessageType.GAMEMESSAGE, "", "Example says " + config.greeting(), null);
-        }
-    }
-
-    @Subscribe
-    public void onOverheadTextChanged(OverheadTextChanged e) {
-        if (e.getActor().equals(client.getLocalPlayer())) {
-            displayNotification("League task", "Test popup for league task");
-        }
-    }
+	@Subscribe
+	public void onGameStateChanged(GameStateChanged gameStateChanged)
+	{
+		if (gameStateChanged.getGameState() == GameState.LOGGED_IN)
+		{
+			// test setting hint arrow above currently logged in player
+			Player currentPlayer = client.getLocalPlayer();
+			client.setHintArrow(currentPlayer);
 
 
-    @Override
-    protected void shutDown() throws Exception {
-        log.info("Example stopped!");
-    }
+			client.addChatMessage(ChatMessageType.GAMEMESSAGE, "", "Example says " + config.greeting(), null);
+		}
+	}
 
-    private void displayNotification(String title, String text) {
-        final int componentId = ((303 << 16) | 2); // Main component
-        final int COLLECTION_LOG_POPUP = 660; // collection log popup
+	@Subscribe
+	public void onOverheadTextChanged(OverheadTextChanged e)
+	{
+		if (e.getActor().equals(client.getLocalPlayer()))
+		{
+			displayNotification("League task", "Test popup for league task");
+		}
+	}
 
-        WidgetNode widgetNode = client.openInterface(componentId, COLLECTION_LOG_POPUP, WidgetModalMode.MODAL_CLICKTHROUGH);
+	@Override
+	protected void shutDown() throws Exception
+	{
+		log.info("Example stopped!");
+	}
 
-        client.runScript(3343, title, text, -1);
+	/**
+	 * Displays a notification with a given title, text
+	 *
+	 * @param title
+	 * @param text
+	 */
+	private void displayNotification(String title, String text)
+	{
+		displayNotification(title, text, DEFAULT_NOTIFICATION_TEXT_COLOR);
+	}
 
-        clientThread.invokeLater(() -> {
-            Widget w = client.getWidget(COLLECTION_LOG_POPUP, 1);
-            if (w.getWidth() > 0) {
-                return false;
-            }
+	/**
+	 * Displays a notification with a given title, text and optional color.
+	 *
+	 * @param title
+	 * @param text
+	 * @param color
+	 */
+	private void displayNotification(String title, String text, int color)
+	{
+		final int NOTIFICATION_DISPLAY_INIT = 3343;
+		final int componentId = ((303 << 16) | 2); // Main component
+		final int interfaceId = 660; // Notification
 
-            client.closeInterface(widgetNode, true);
-            return true;
-        });
-    }
+		WidgetNode widgetNode = client.openInterface(componentId, interfaceId, WidgetModalMode.MODAL_CLICKTHROUGH);
 
-    @Provides
-    ExampleConfig provideConfig(ConfigManager configManager) {
-        return configManager.getConfig(ExampleConfig.class);
-    }
+		// Set the initial title and text for the current notification
+		client.runScript(NOTIFICATION_DISPLAY_INIT, title, text, color);
+
+		clientThread.invokeLater(() -> {
+			Widget w = client.getWidget(interfaceId, 1);
+			if (w.getWidth() > 0)
+			{
+				return false;
+			}
+
+			client.closeInterface(widgetNode, true);
+			return true;
+		});
+	}
+
+	@Provides
+	ExampleConfig provideConfig(ConfigManager configManager)
+	{
+		return configManager.getConfig(ExampleConfig.class);
+	}
 }
